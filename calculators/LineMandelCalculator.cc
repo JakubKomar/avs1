@@ -39,10 +39,11 @@ int * LineMandelCalculator::calculateMandelbrot () {
 	const float c_dy = dy;
 
 
-	#pragma omp simd collapse(2)
-	for (int i = 0; i < c_height; i++)
+	//#pragma omp simd collapse(3)
+	//#pragma omp parallel for simd
+	for (int i = 0; i < c_height/2; i++)
 	{
-		//#pragma omp simd
+		#pragma omp simd
 		for (int j = 0; j < c_width; j++)
 		{
 			float x=c_x_start + j * c_dx;
@@ -63,6 +64,20 @@ int * LineMandelCalculator::calculateMandelbrot () {
 				zReal = r2 - i2 + x;
 			}
 			pdata[i * c_width + j ] = l;
+		}
+	}
+
+	//#pragma omp parallel for
+	for (int i = 0; i < c_height/2; i++)
+	{
+		int* srcRowPtr = pdata + i * c_width;  // Ukazatel na zdrojový řádek
+        int* destRowPtr = pdata + (c_height - i - 1) * c_width;  // Ukazatel na cílový řádek
+		
+		#pragma omp simd
+		for (int j = 0; j < c_width; j++)
+		{
+			//const int val =pdata[i * c_width + j ];
+			srcRowPtr[j]=destRowPtr[j];
 		}
 	}
 	return data;
