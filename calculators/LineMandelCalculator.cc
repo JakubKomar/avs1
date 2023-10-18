@@ -76,9 +76,8 @@ int * LineMandelCalculator::calculateMandelbrot () {
 		#pragma omp simd
 		for (int j = 0; j < c_width; j++)
 		{
-			//const int val =pdata[i * c_width + j ];
-			srcRowPtr[j]=destRowPtr[j];
+			destRowPtr[j]=srcRowPtr[j];
 		}
 	}
-	return data;
+	return pdata;
 }
