@@ -17,15 +17,16 @@
 
 #define L2_SIZE 128
 #define L3_SIZE 512
+#define LINEUP_SIZE 64
 BatchMandelCalculator::BatchMandelCalculator (unsigned matrixBaseSize, unsigned limit) :
 	BaseMandelCalculator(matrixBaseSize, limit, "BatchMandelCalculator")
 {
-	data= (int *)_mm_malloc(height * width * sizeof(int), L3_SIZE * sizeof(int));
-	results =(int32_t *)_mm_malloc(L3_SIZE* sizeof(int32_t), L3_SIZE * sizeof(int32_t));
+	data= (int *)_mm_malloc(height * width * sizeof(int), LINEUP_SIZE * sizeof(int));
+	results =(int32_t *)_mm_malloc(L2_SIZE* sizeof(int32_t), LINEUP_SIZE * sizeof(int32_t));
 
-	x  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), L3_SIZE * sizeof(_Float32));
-	zReal  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), L3_SIZE * sizeof(_Float32));
-	zImag  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), L3_SIZE * sizeof(_Float32));
+	x  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), LINEUP_SIZE * sizeof(_Float32));
+	zReal  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), LINEUP_SIZE * sizeof(_Float32));
+	zImag  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), LINEUP_SIZE * sizeof(_Float32));
 }
 
 BatchMandelCalculator::~BatchMandelCalculator() {
@@ -62,10 +63,6 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 				zImag[j] = y;
 			}
 
-			#pragma omp simd
-			for (int32_t j = 0; j < L3_SIZE; j++){
-				results[j] =limit;
-			}
 
 			#pragma omp simd
 			for (int32_t j = 0; j < L3_SIZE; j++){
@@ -75,19 +72,24 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 			}
 
 			for (int32_t j_L2 = 0; j_L2 < L3_SIZE/L2_SIZE; j_L2++){ // všechny podskupiny
-				const int32_t j_l2_offsetVar=  j_L2*L2_SIZE;
+				const int32_t j_l2_offset=  j_L2*L2_SIZE;
 				
+				#pragma omp simd
+				for (int32_t j = 0; j < L2_SIZE; j++){
+					results[j] =limit;
+				}
+
 				int32_t done=0;
 				for (int32_t l = 0; l < limit; ++l){  //cykli v limitu 
 
 					#pragma omp simd reduction(+:done)
 					for (int32_t j_L1 = 0; j_L1 < L2_SIZE; j_L1++){ //pro každou položku v podskupině 			
-						const int32_t j= j_l2_offsetVar+j_L1;
+						const int32_t j= j_l2_offset+j_L1;
 						_Float32 r2 = zReal[j] * zReal[j];
 						_Float32 i2 = zImag[j] * zImag[j];
 
 						if (r2 + i2 > 4.0f && results[j]==limit){
-							results[j]=l;
+							results[j_L1]=l;
 							done++;
 						}
 
@@ -99,10 +101,10 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 					}
 				}
 								
-				const int32_t dataOffset=rowOffset + j_l3_offset+ j_l2_offsetVar;;
+				const int32_t dataOffset=rowOffset + j_l3_offset+ j_l2_offset;
 				#pragma omp simd
 				for (int32_t j = 0; j < L2_SIZE; j++){
-					pdata[ dataOffset + j] = results[j_l2_offsetVar+j];
+					pdata[ dataOffset + j] = results[j];
 				}		
 			}
 		}

@@ -19,11 +19,20 @@
 LineMandelCalculator::LineMandelCalculator (unsigned matrixBaseSize, unsigned limit) :
 	BaseMandelCalculator(matrixBaseSize, limit, "LineMandelCalculator")
 {
-	data=  new int32_t[height*width];
+	data= (int *)_mm_malloc(height * width * sizeof(int), 64 * sizeof(int));
+	results =(int32_t *)_mm_malloc(width* sizeof(int32_t), 64 * sizeof(int32_t));
+
+	x  =(_Float32 *)_mm_malloc(width* sizeof(_Float32), 64 * sizeof(_Float32));
+	zReal  =(_Float32 *)_mm_malloc(width* sizeof(_Float32), 64 * sizeof(_Float32));
+	zImag  =(_Float32 *)_mm_malloc(width* sizeof(_Float32), 64 * sizeof(_Float32));
 }
 
 LineMandelCalculator::~LineMandelCalculator() {
-	delete data;
+	_mm_free(data);
+	_mm_free(results);
+	_mm_free(x);
+	_mm_free(zReal);
+	_mm_free(zImag);
 	data = NULL;
 }
 
@@ -99,9 +108,4 @@ int * LineMandelCalculator::calculateMandelbrot () {
 			destRowPtr[j]=srcRowPtr[j];
 		}
 	}
-	delete x;
-	delete zReal;
-	delete zImag;
-	delete results;
-	return pdata;
 }
