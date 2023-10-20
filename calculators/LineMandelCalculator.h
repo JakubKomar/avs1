@@ -16,4 +16,9 @@ public:
 
 private:
     int *data;
+    
+	float * x;
+	float * zReal;
+	float * zImag;
+	int32_t * results;
 };
