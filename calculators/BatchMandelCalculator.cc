@@ -24,20 +24,11 @@ BatchMandelCalculator::BatchMandelCalculator (unsigned matrixBaseSize, unsigned 
 	//data = (int *)(malloc(height * width * sizeof(int)));
 	data=  new int32_t[height*width];
 	//(int *)_mm_malloc(height * width * sizeof(int), 64 * sizeof(int));
-
-	x =new _Float32[L3_SIZE];
-	zReal =new _Float32[L3_SIZE];
-	zImag =new _Float32[L3_SIZE];
-	results =new int32_t[L3_SIZE];
 }
 
 BatchMandelCalculator::~BatchMandelCalculator() {
 	delete data;
 	data = NULL;
-	delete x;
-	delete zReal;
-	delete zImag;
-	delete results;
 }
 
 int * BatchMandelCalculator::calculateMandelbrot () {
@@ -50,6 +41,11 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 	const _Float32 c_y_start = y_start;
 	const _Float32 c_dx = dx;
 	const _Float32 c_dy = dy;
+
+	x =new _Float32[L3_SIZE];
+	zReal =new _Float32[L3_SIZE];
+	zImag =new _Float32[L3_SIZE];
+	results =new int32_t[L3_SIZE];
 
 	for (int32_t i = 0; i < c_height/2; i++){ // cykly přes všechny řádky
 		const _Float32 y=c_y_start + i * c_dy;
@@ -70,7 +66,7 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 
 			#pragma omp simd
 			for (int32_t j = 0; j < L3_SIZE; j++){
-				const _Float32 xCalc=c_x_start + j * c_dx;
+				const _Float32 xCalc=c_x_start + (j_l3_offset+j) * c_dx;
 				x[j]=xCalc;
 				zReal[j]=xCalc;
 			}
@@ -78,7 +74,7 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 			int32_t done=0;
 			for (int32_t l = 0; l < limit; ++l){  //cykli v limitu 
 
-				#pragma omp scimd
+				#pragma omp simd reduction(+:done)
 				for (int32_t j = 0; j < L3_SIZE; j++){ //pro každou položku v podskupině 			
 
 					_Float32 r2 = zReal[j] * zReal[j];
@@ -113,6 +109,9 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 			destRowPtr[j]=srcRowPtr[j];
 		}
 	}
-	
+	delete x;
+	delete zReal;
+	delete zImag;
+	delete results;
 	return pdata;
 }
