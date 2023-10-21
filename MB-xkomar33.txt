@@ -3,20 +3,38 @@
 
 1. Byla "Line" vektorizace časově efektivní? Proč?
 ==============================================================================
-
+Ano, protože se narozdíl od referenčního řešení mohou řešit až 8-mice pixelů najednou.
+Tento fakt je dán prohozením smyček (cyklících přes řádky a iterací do limitu) a díky tomu je možná vektorizace nad touto částí kódu.
+Kód byl limitován okorát prostorovou efektivitou.
 
 2. Jaká byla dosažena výkonnost v Intel Advisoru pro jednotlivé implementace 
 (v GFLOPS)?
 ==============================================================================
-
+výkonnost hlavní části algoritmu byla:
+ref - 0,805 gflops
+line - 28,724 gflops
+batch - 36,957 glfops
 
 3. Jaká část kódu byla vektorizována v "Line" implementaci? Vyčteme tuto 
 informaci i u batch kalkulátoru?
 ==============================================================================
+v mé implementaci line bylo vektorizováno následující:
+Vnitřní smyška pro kopírování matice.
+V hlavním cyklu byly vektorizovány všechny cykly pro přípravu a ukládání dat do předpřipravené struktury pro následný výpočet, 
+dále v hlavním výpočetním cyklu byla vektorizována vnitřní smyčka ve výpočetní části (to jest nejvnější smyčka, která provádí iterace podle položek rádku).
 
+Vektorizace šla mnohdy provést i pro výše položené smyčky, to však vedlo na horší efektivitu programu.
+
+Ano, v batch implementaci byly vektorizovány podobné části kódu.
 
 4. Co vyčteme z Roofline modelu pro obě vektorizované implementace?
 ==============================================================================
 
+V line implementaci jsem zjistil, že program hravě přesáhl propustnost dram a byl v zóně l3 paměti. 
+A však kvůli lokalitě dat nebyl schopen se přiblížit k hranici propustnosti l2 - (kvůli vybíjení paměti cash). 
 
+V batch implementaci tento problém byl odstraněn díky lepší prostorové pozici dat. 
+Povedlo se mi se více přiblížit k propustnosti paměti l2. Podle avizoru jsem se velmi přiblížil k hranici "DP vector add peak (39,81gflops)" a proto jsem další pokusy o optimalizaci neučinil.
 
+U obou implementací byla aritmetická intenzita téměř totožná.
+V batch modelu také lze vyčíst konkrétní hodnoty GFLOPS - viz. bod 2.
