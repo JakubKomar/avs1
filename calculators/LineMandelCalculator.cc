@@ -89,7 +89,7 @@ int * LineMandelCalculator::calculateMandelbrot () {
 		}	
 		
 		const int32_t arrayShift=i * c_width;
-		#pragma omp simd
+		#pragma vector aligned
 		for (int32_t j = 0; j < c_width; j++){
 			pdata[arrayShift + j ] = results[j];
 		}	
