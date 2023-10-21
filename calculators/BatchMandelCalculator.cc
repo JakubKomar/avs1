@@ -1,8 +1,8 @@
 /**
  * @file BatchMandelCalculator.cc
- * @author FULL NAME <xlogin00@stud.fit.vutbr.cz>
+ * @author Jakub Komárek <xkomar33@stud.fit.vutbr.cz>
  * @brief Implementation of Mandelbrot calculator that uses SIMD paralelization over small batches
- * @date DATE
+ * @date 21.10.2023
  */
 
 #include <iostream>
@@ -21,13 +21,13 @@
 BatchMandelCalculator::BatchMandelCalculator (unsigned matrixBaseSize, unsigned limit) :
 	BaseMandelCalculator(matrixBaseSize, limit, "BatchMandelCalculator")
 {
-	data= (int *)_mm_malloc(height * width * sizeof(int), ALIGEN_SIZE * sizeof(int));
-	results =(int32_t *)_mm_malloc(L2_SIZE* sizeof(int32_t), ALIGEN_SIZE * sizeof(int32_t));
+	data	=	(int *)		_mm_malloc(height  * width * sizeof(int), ALIGEN_SIZE * sizeof(int));
+	results =	(int32_t *)	_mm_malloc(L2_SIZE * sizeof(int32_t) , ALIGEN_SIZE * sizeof(int32_t));
 
-	x  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
-	zReal  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
-	zImag  =(_Float32 *)_mm_malloc(L3_SIZE* sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
-}
+	x		=	(_Float32 *)_mm_malloc(L3_SIZE * sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
+	zReal  	=	(_Float32 *)_mm_malloc(L3_SIZE * sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
+	zImag  	=	(_Float32 *)_mm_malloc(L3_SIZE * sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
+}	
 
 BatchMandelCalculator::~BatchMandelCalculator() {
 	_mm_free(data);
@@ -44,12 +44,11 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 	const int32_t c_height=height;
 	const int32_t c_width=width;
 	const int32_t c_limit=limit;
+
 	const _Float32 c_x_start = x_start;
 	const _Float32 c_y_start = y_start;
 	const _Float32 c_dx = dx;
-	const _Float32 c_dy = dy;
-
-
+	const _Float32 c_dy = dy; 
 
 	for (int32_t i = 0; i < c_height/2; i++){ // cykly přes všechny řádky
 		const _Float32 y=c_y_start + i * c_dy;
@@ -58,12 +57,12 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 		for (int32_t j_L3 = 0; j_L3 < c_width/L3_SIZE; j_L3++){ //cykly přes všechny skupiny na řádku
 			const int32_t j_l3_offset= j_L3 * L3_SIZE;
 
-			#pragma omp simd
+			#pragma vector aligned
 			for (int32_t j = 0; j < L3_SIZE; j++){
 				zImag[j] = y;
 			}
 
-			#pragma omp simd
+			#pragma vector aligned
 			for (int32_t j = 0; j < L3_SIZE; j++){
 				const _Float32 xCalc=c_x_start + (j_l3_offset+j) * c_dx;
 				x[j]=xCalc;
@@ -74,7 +73,7 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 				const int32_t j_l2_offsetVar=  j_L2*L2_SIZE;
 				const int32_t j_l2_offset= j_l3_offset + j_l2_offsetVar;
 
-				#pragma omp simd
+				#pragma vector aligned
 				for (int32_t j = 0; j < L2_SIZE; j++){
 					results[j] =limit;
 				}
@@ -85,8 +84,8 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 					#pragma omp simd reduction(+:done)
 					for (int32_t j_L1 = 0; j_L1 < L2_SIZE; j_L1++){ //pro každou položku v podskupině 			
 						const int32_t j= j_l2_offsetVar+j_L1;
-						_Float32 r2 = zReal[j] * zReal[j];
-						_Float32 i2 = zImag[j] * zImag[j];
+						const _Float32 r2 = zReal[j] * zReal[j];
+						const _Float32 i2 = zImag[j] * zImag[j];
 
 						if (r2 + i2 > 4.0f && results[j_L1]==limit){
 							results[j_L1]=l;
@@ -102,7 +101,7 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 				}
 								
 				const int32_t dataOffset=rowOffset + j_l2_offset;
-				#pragma omp simd 
+				#pragma vector aligned
 				for (int32_t j = 0; j < L2_SIZE; j++){
 					pdata[ dataOffset + j] = results[j];
 				}		
@@ -111,10 +110,10 @@ int * BatchMandelCalculator::calculateMandelbrot () {
 	}
 
 	for (int32_t i = 0; i < c_height/2; i++){
-		int* srcRowPtr = pdata + i * c_width;  // Ukazatel na zdrojový řádek
+		const int* srcRowPtr = pdata + i * c_width;  // Ukazatel na zdrojový řádek
         int* destRowPtr = pdata + (c_height - i - 1) * c_width;  // Ukazatel na cílový řádek
 
-		#pragma omp simd 
+		#pragma vector aligned
 		for (int j = 0; j < c_width; j++){
 			destRowPtr[j]=srcRowPtr[j];
 		}

@@ -1,8 +1,8 @@
 /**
  * @file LineMandelCalculator.cc
- * @author FULL NAME <xlogin00@stud.fit.vutbr.cz>
+ * @author Jakub Komárek <xkomar33@stud.fit.vutbr.cz>
  * @brief Implementation of Mandelbrot calculator that uses SIMD paralelization over lines
- * @date DATE
+ * @date 21.10.2023
  */
 #include <iostream>
 #include <string>
@@ -15,16 +15,16 @@
 
 #include "LineMandelCalculator.h"
 
-
+#define ALIGEN_SIZE 32
 LineMandelCalculator::LineMandelCalculator (unsigned matrixBaseSize, unsigned limit) :
 	BaseMandelCalculator(matrixBaseSize, limit, "LineMandelCalculator")
 {
-	data= (int *)_mm_malloc(height * width * sizeof(int), 64 * sizeof(int));
-	results =(int32_t *)_mm_malloc(width* sizeof(int32_t), 64 * sizeof(int32_t));
+	data	=(int *)	_mm_malloc(height * width * sizeof(int), ALIGEN_SIZE * sizeof(int));
+	results =(int32_t *)_mm_malloc(width * sizeof(int32_t), ALIGEN_SIZE * sizeof(int32_t));
 
-	x  =(_Float32 *)_mm_malloc(width* sizeof(_Float32), 64 * sizeof(_Float32));
-	zReal  =(_Float32 *)_mm_malloc(width* sizeof(_Float32), 64 * sizeof(_Float32));
-	zImag  =(_Float32 *)_mm_malloc(width* sizeof(_Float32), 64 * sizeof(_Float32));
+	x  		=(_Float32 *)_mm_malloc(width * sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
+	zReal  	=(_Float32 *)_mm_malloc(width * sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
+	zImag  	=(_Float32 *)_mm_malloc(width * sizeof(_Float32), ALIGEN_SIZE * sizeof(_Float32));
 }
 
 LineMandelCalculator::~LineMandelCalculator() {
@@ -46,25 +46,21 @@ int * LineMandelCalculator::calculateMandelbrot () {
 	const _Float32 c_dx = dx;
 	const _Float32 c_dy = dy;
 
-	x =new _Float32[width];
-	zReal =new _Float32[width];
-	zImag =new _Float32[width];
-	results =new int32_t[width];
 
 	for (int32_t i = 0; i < c_height/2; i++){
 		const _Float32 y=c_y_start + i * c_dy;
 
-		#pragma omp simd
+		#pragma vector aligned
 		for (int32_t j = 0; j < c_width; j++){
 			zImag[j] = y;
 		}
 
-		#pragma omp simd
+		#pragma vector aligned
 		for (int32_t j = 0; j < c_width; j++){
 			results[j] =limit;
 		}
 
-		#pragma omp simd
+		#pragma vector aligned
 		for (int32_t j = 0; j < c_width; j++){
 			const _Float32 xCalc=c_x_start + j * c_dx;
 			x[j]=xCalc;
@@ -76,8 +72,8 @@ int * LineMandelCalculator::calculateMandelbrot () {
 			
 			#pragma omp simd reduction(+:done)
 			for (int32_t j = 0; j < c_width; j++){
-				_Float32 r2 = zReal[j] * zReal[j];
-				_Float32 i2 = zImag[j] * zImag[j];
+				const _Float32 r2 = zReal[j] * zReal[j];
+				const _Float32 i2 = zImag[j] * zImag[j];
 
 				if (r2 + i2 > 4.0f && results[j]==limit){
 					results[j]=l;
@@ -103,9 +99,10 @@ int * LineMandelCalculator::calculateMandelbrot () {
 		int* srcRowPtr = pdata + i * c_width;  // Ukazatel na zdrojový řádek
         int* destRowPtr = pdata + (c_height - i - 1) * c_width;  // Ukazatel na cílový řádek
 		
-		#pragma omp simd
+		#pragma vector aligned
 		for (int j = 0; j < c_width; j++){
 			destRowPtr[j]=srcRowPtr[j];
 		}
 	}
+	return pdata;
 }
